@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/admin_model.dart';
-import '../services/admin_storage_service.dart';
-import '../services/auth_service.dart';
-import 'admin_login_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({Key? key}) : super(key: key);
@@ -14,7 +10,6 @@ class AdminPanelScreen extends StatefulWidget {
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
   late AdminSettings _settings;
   bool _isLoading = true;
-  int _selectedTabIndex = 0;
 
   @override
   void initState() {
@@ -23,11 +18,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final settings = await AdminStorageService.getAdminSettings();
-    setState(() {
-      _settings = settings;
-      _isLoading = false;
-    });
+    _settings = await AdminStorageService.getAdminSettings();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -50,58 +46,52 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('لوحة التحكم الإدارية'),
-        actions: [
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Text('تغيير كلمة المرور'),
-                value: 'change_password',
-              ),
-              PopupMenuItem(
-                child: const Text('تسجيل خروج'),
-                value: 'logout',
-              ),
-            ],
-            onSelected: (value) async {
-              if (value == 'logout') {
-                await _handleLogout();
-              } else if (value == 'change_password') {
-                _showChangePasswordDialog();
-              }
-            },
-          ),
-        ],
-      ),
-      body: Directionality(
-        textDirection: TextDirection.rtl,
-        child: DefaultTabController(
-          length: 3,
-          child: Column(
-            children: [
-              TabBar(
-                tabs: const [
-                  Tab(text: 'الخدمات'),
-                  Tab(text: 'خطط الاشتراك'),
-                  Tab(text: 'مميزات إضافية'),
-                ],
-                onTap: (index) {
-                  setState(() => _selectedTabIndex = index);
-                },
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _buildServicesSection(),
-                    _buildSubscriptionPlansSection(),
-                    _buildServiceFeaturesSection(),
-                  ],
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('لوحة التحكم الإدارية'),
+          actions: [
+            PopupMenuButton<String>(
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'change_password',
+                  child: Text('تغيير كلمة المرور'),
                 ),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: Text('تسجيل خروج'),
+                ),
+              ],
+              onSelected: (value) async {
+                if (value == 'logout') {
+                  await _handleLogout();
+                } else if (value == 'change_password') {
+                  _showChangePasswordDialog();
+                }
+              },
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            const TabBar(
+              tabs: [
+                Tab(text: 'الخدمات'),
+                Tab(text: 'الاشتراكات'),
+                Tab(text: 'المميزات'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildServicesSection(),
+                  _buildSubscriptionPlansSection(),
+                  _buildServiceFeaturesSection(),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -141,7 +131,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ),
               _buildServiceToggle(
                 'الاختبارات',
-                'تفعيل/تعطيل الاختبارات والاختبارات',
+                'تفعيل/تعطيل الاختبارات',
                 _settings.quizEnabled,
                 (value) async {
                   setState(() => _settings.quizEnabled = value);
@@ -177,141 +167,121 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
-        children: [
-          Card(
+        children: _settings.subscriptionPlans.map((plan) {
+          final priceController = TextEditingController(text: plan.price.toString());
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'إدارة خطط الاشتراك',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ..._settings.subscriptionPlans.map((plan) {
-                    return _buildSubscriptionPlanCard(plan);
-                  }).toList(),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubscriptionPlanCard(SubscriptionPlan plan) {
-    final priceController = TextEditingController(text: plan.price.toString());
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[50],
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        plan.name,
-                        style: Theme.of(context).textTheme.titleMedium,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              plan.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'السعر: ${plan.price.toStringAsFixed(0)} SDG',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'السعر: ${plan.price.toStringAsFixed(0)} SDG',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      Switch(
+                        value: plan.isEnabled,
+                        onChanged: (value) async {
+                          setState(() => plan.isEnabled = value);
+                          await AdminStorageService.updateSubscriptionPlan(
+                            plan.id,
+                            plan.price,
+                            plan.features,
+                            value,
+                          );
+                        },
                       ),
                     ],
                   ),
-                ),
-                Switch(
-                  value: plan.isEnabled,
-                  onChanged: (value) async {
-                    setState(() => plan.isEnabled = value);
-                    await AdminStorageService.updateSubscriptionPlan(
-                      plan.id,
-                      plan.price,
-                      plan.features,
-                      value,
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'تغيير السعر:',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: priceController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      hintText: 'السعر الجديد',
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'تغيير السعر:',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    final newPrice =
-                        double.tryParse(priceController.text) ?? plan.price;
-                    setState(() => plan.price = newPrice);
-                    await AdminStorageService.updateSubscriptionPlan(
-                      plan.id,
-                      newPrice,
-                      plan.features,
-                      plan.isEnabled,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تحديث السعر')),
-                    );
-                  },
-                  child: const Text('تحديث'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'المميزات:',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            ...plan.features.map((feature) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                textDirection: TextDirection.rtl,
-                children: [
-                  const Icon(Icons.check, size: 16, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      feature,
-                      style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: priceController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            hintText: 'السعر الجديد',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final newPrice = double.tryParse(priceController.text) ?? plan.price;
+                          setState(() => plan.price = newPrice);
+                          await AdminStorageService.updateSubscriptionPlan(
+                            plan.id,
+                            newPrice,
+                            plan.features,
+                            plan.isEnabled,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم تحديث السعر')),
+                          );
+                        },
+                        child: const Text('تحديث'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'المميزات:',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ...plan.features.map(
+                    (feature) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check, size: 16, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              feature,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            )).toList(),
-          ],
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -319,114 +289,93 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   Widget _buildServiceFeaturesSection() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'إدارة مميزات خدمة إضافية',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              ..._settings.serviceFeatures.map((feature) {
-                return _buildServiceFeatureCard(feature);
-              }).toList(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+      child: Column(
+        children: _settings.serviceFeatures.map((feature) {
+          final priceController = TextEditingController(text: (feature.price ?? 0).toString());
 
-  Widget _buildServiceFeatureCard(ServiceFeature feature) {
-    final priceController =
-        TextEditingController(text: (feature.price ?? 0).toString());
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.grey[50],
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        feature.name,
-                        style: Theme.of(context).textTheme.titleMedium,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              feature.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              feature.description,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        feature.description,
-                        style: Theme.of(context).textTheme.bodySmall,
+                      Switch(
+                        value: feature.isEnabled,
+                        onChanged: (value) async {
+                          setState(() => feature.isEnabled = value);
+                          await AdminStorageService.toggleServiceFeature(feature.id, value);
+                        },
                       ),
                     ],
                   ),
-                ),
-                Switch(
-                  value: feature.isEnabled,
-                  onChanged: (value) async {
-                    setState(() => feature.isEnabled = value);
-                    await AdminStorageService.toggleServiceFeature(
-                      feature.id,
-                      value,
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'السعر الإضافي:',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: priceController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      hintText: 'السعر (اترك فارغاً إذا لم يكن هناك)',
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'السعر الإضافي:',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    final newPrice = priceController.text.isEmpty
-                        ? null
-                        : double.tryParse(priceController.text);
-                    setState(() => feature.price = newPrice);
-                    await AdminStorageService.updateServiceFeaturePrice(
-                      feature.id,
-                      newPrice,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تحديث السعر')),
-                    );
-                  },
-                  child: const Text('تحديث'),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: priceController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            hintText: 'السعر (اترك فارغاً إذا لم يكن هناك)',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final newPrice = priceController.text.isEmpty
+                              ? null
+                              : double.tryParse(priceController.text);
+                          setState(() => feature.price = newPrice);
+                          await AdminStorageService.updateServiceFeaturePrice(
+                            feature.id,
+                            newPrice,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم تحديث السعر')),
+                          );
+                        },
+                        child: const Text('تحديث'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -511,11 +460,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (newPasswordController.text !=
-                  confirmPasswordController.text) {
+              if (newPasswordController.text != confirmPasswordController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text(كلما المرور الجديدة غير متطابقة')),
+                    content: Text('كلمة المرور الجديدة غير متطابقة'),
+                  ),
                 );
                 return;
               }
@@ -530,13 +479,11 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
                 if (success) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('تم تغيير كلمة المرور بنجاح')),
+                    const SnackBar(content: Text('تم تغيير كلمة المرور بنجاح')),
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('فشل تغيير كلمة المرور')),
+                    const SnackBar(content: Text('فشل تغيير كلمة المرور')),
                   );
                 }
               }
@@ -548,3 +495,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 }
+
+import '../models/admin_model.dart';
+import '../services/admin_storage_service.dart';
+import '../services/auth_service.dart';
+import 'admin_login_screen.dart';
