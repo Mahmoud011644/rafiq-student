@@ -1,0 +1,30 @@
+# This file tracks properties of this Flutter project.
+# Used by Flutter tool to assess capabilities and perform upgrades etc.
+#
+# This file should be version controlled.
+
+version:
+  revision: f1875d570e39de09040c8f79aa13cc56baab60de
+  channel: stable
+
+project_type: app
+
+# Tracks metadata for the flutter migrate command
+migration:
+  platforms:
+    - platform: root
+      create_base_migration_path: true
+    - platform: android
+      create_base_migration_path: true
+    - platform: ios
+      create_base_migration_path: true
+    - platform: linux
+      create_base_migration_path: true
+    - platform: macos
+      create_base_migration_path: true
+    - platform: web
+      create_base_migration_path: true
+    - platform: windows
+      create_base_migration_path: true
+  linux_project_migration:
+    settings_porting_status: done
